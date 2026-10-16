@@ -67,6 +67,21 @@ func startDetached(path string, args ...string) error {
 	}
 	return cmd.Process.Release()
 }
+
+func visibleCommand(path string, args ...string) *exec.Cmd {
+	cmd := exec.Command(path, args...)
+	// Chrome/Edge and the explicitly requested status viewer must remain visible.
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x08000000}
+	return cmd
+}
+
+func startVisible(path string, args ...string) error {
+	cmd := visibleCommand(path, args...)
+	if err := cmd.Start(); err != nil {
+		return errors.New("cannot open application window")
+	}
+	return cmd.Process.Release()
+}
 func findBrowser() (string, error) {
 	for _, base := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)"), os.Getenv("LOCALAPPDATA")} {
 		if base == "" {
@@ -88,10 +103,10 @@ func openBrowser(browser, video, profile string) error {
 	if e := os.MkdirAll(profile, 0700); e != nil {
 		return e
 	}
-	return startDetached(browser, "--user-data-dir="+profile, "--autoplay-policy=no-user-gesture-required", "--no-first-run", "--no-default-browser-check", "--new-window", "https://www.youtube.com/watch?v="+video+"&autoplay=1")
+	return startVisible(browser, "--user-data-dir="+profile, "--autoplay-policy=no-user-gesture-required", "--no-first-run", "--no-default-browser-check", "--new-window", "https://www.youtube.com/watch?v="+video+"&autoplay=1")
 }
 func openStatus(path string) error {
-	return startDetached(filepath.Join(os.Getenv("WINDIR"), "System32", "notepad.exe"), path)
+	return startVisible(filepath.Join(os.Getenv("WINDIR"), "System32", "notepad.exe"), path)
 }
 func notify(title, message string) {
 	if os.Getenv("XIAO_TEST_NO_UI") == "1" {

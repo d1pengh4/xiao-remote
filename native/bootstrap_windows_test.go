@@ -51,8 +51,12 @@ func TestWindowsDownloadHashPairAndBackground(t *testing.T) {
 	rand.Read(pairing)
 	token := base64.RawURLEncoding.EncodeToString(pairing)
 	script := func(name, hash string) *exec.Cmd {
-		text := strings.NewReplacer("__PAIR__", token, "__URL__", server.URL, "__SHA256__", hash).Replace(templates[name])
-		if len(text) > 250 {
+		var groups []string
+		for i := 0; i < len(hash); i += 2 {
+			groups = append(groups, strings.ToUpper(hash[i:i+2]))
+		}
+		text := strings.NewReplacer("__PAIR__", token, "__URL__", server.URL, "__SHA256__", strings.Join(groups, "-")).Replace(templates[name])
+		if len(text) > 259 {
 			t.Fatal("Run dialog command too long")
 		}
 		// Execute the exact -Command body that the Flipper types; no alternate test installer.
@@ -73,11 +77,11 @@ func TestWindowsDownloadHashPairAndBackground(t *testing.T) {
 		}
 	}
 	run(script("pair", strings.Repeat("0", 64)))
-	if data, err := os.ReadFile(filepath.Join(temporary, "xr-v2.pair")); err != nil || !strings.Contains(string(data), token) {
+	if data, err := os.ReadFile(filepath.Join(temporary, "xr2.p")); err != nil || !strings.Contains(string(data), token) {
 		t.Fatal("pairing file was not written by PowerShell")
 	}
 	run(script("download", strings.Repeat("0", 64)))
-	downloaded, downloadErr := os.ReadFile(filepath.Join(temporary, "xr-v2.exe"))
+	downloaded, downloadErr := os.ReadFile(filepath.Join(temporary, "xr2.exe"))
 	if downloadErr != nil {
 		t.Fatal("curl/rename did not produce the downloaded executable")
 	}
@@ -93,7 +97,8 @@ func TestWindowsDownloadHashPairAndBackground(t *testing.T) {
 	os.MkdirAll(filepath.Dir(fakeBrowser), 0700)
 	os.WriteFile(fakeBrowser, []byte("not executed"), 0600)
 	// Start verification first, then download: slow connections must not race the installer.
-	os.Remove(filepath.Join(temporary, "xr-v2.exe"))
+	os.Remove(filepath.Join(temporary, "xr2.exe"))
+	run(script("pair", hex.EncodeToString(digest[:])))
 	verifier := script("verify", hex.EncodeToString(digest[:]))
 	var verificationOutput bytes.Buffer
 	verifier.Stdout = &verificationOutput

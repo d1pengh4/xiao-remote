@@ -37,6 +37,15 @@ func TestProcessSelectionIsExact(t *testing.T) {
 		}
 	}
 }
+
+func TestReceiverHiddenButPlaybackAndStatusVisible(t *testing.T) {
+	if !backgroundCommand("xiao.exe", "run").SysProcAttr.HideWindow {
+		t.Fatal("background helper can show a console")
+	}
+	if visibleCommand("chrome.exe").SysProcAttr.HideWindow || visibleCommand("notepad.exe").SysProcAttr.HideWindow {
+		t.Fatal("playback or status viewer was hidden")
+	}
+}
 func TestWindowsGUIInstallStartStopUninstall(t *testing.T) {
 	local := t.TempDir()
 	t.Setenv("LOCALAPPDATA", local)
@@ -139,7 +148,7 @@ func waitForUninstallHelpers(t *testing.T) {
 		entries, _ := os.ReadDir(os.TempDir())
 		found := false
 		for _, entry := range entries {
-			if strings.HasPrefix(entry.Name(), "xiao-uninstall-") {
+			if entry.IsDir() && strings.HasPrefix(entry.Name(), "xiao-uninstall-") {
 				found = true
 			}
 		}

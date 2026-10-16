@@ -115,7 +115,7 @@ func install(p paths, args []string, start bool) error {
 }
 
 func installPair(p paths, token string) error {
-	defer os.Remove(filepath.Join(os.TempDir(), "xr-v2.pair"))
+	defer os.Remove(filepath.Join(os.TempDir(), "xr2.p"))
 	data, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(token))
 	if err != nil || len(data) != 56 {
 		return errors.New("invalid pairing data")
@@ -256,7 +256,7 @@ func cleanupRoot(p paths) error {
 	if e = os.RemoveAll(p.root); e != nil {
 		return errors.New("some application files remain open")
 	}
-	for _, name := range []string{"xr-v2.exe", "xr-v2.exe.tmp", "xr-v2.tmp", "xr-v2.ok.exe", "xr-v2.pair"} {
+	for _, name := range []string{"xr2.exe", "xr2.exe.tmp", "xr2.p", "xr-v2.exe", "xr-v2.exe.tmp", "xr-v2.tmp", "xr-v2.ok.exe", "xr-v2.pair"} {
 		_ = os.Remove(filepath.Join(os.TempDir(), name))
 	}
 	_ = os.Remove(filepath.Join(filepath.Dir(p.root), "XiaoRemote-v2.exe"))
