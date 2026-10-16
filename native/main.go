@@ -102,13 +102,13 @@ func install(p paths, args []string, start bool) error {
 }
 
 func installPair(p paths, token string) error {
+	defer os.Remove(filepath.Join(os.TempDir(), "xr-v2.pair"))
 	data, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(token))
 	if err != nil || len(data) != 56 {
 		return errors.New("invalid pairing data")
 	}
 	topic := "xiao-" + hex.EncodeToString(data[:24])
 	key := hex.EncodeToString(data[24:])
-	defer os.Remove(filepath.Join(os.TempDir(), "xr-v2.pair"))
 	return install(p, []string{topic, key, "jfKfPfyJRdk"}, true)
 }
 func stop(p paths) error {

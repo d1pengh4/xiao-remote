@@ -29,7 +29,7 @@ func mutexName(root string) string {
 	return `Local\XiaoRemoteNative-` + hex.EncodeToString(sum[:8])
 }
 func acquireInstance(root string) (func(), error) {
-	h, _, e := createMutex.Call(0, 1, uintptr(unsafe.Pointer(utf16(mutexName(root)))))
+	h, _, e := createMutex.Call(0, 0, uintptr(unsafe.Pointer(utf16(mutexName(root)))))
 	if h == 0 {
 		return nil, errors.New("cannot create receiver lock")
 	}

