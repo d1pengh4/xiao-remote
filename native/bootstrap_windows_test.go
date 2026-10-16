@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -60,7 +61,9 @@ func TestWindowsDownloadHashPairAndBackground(t *testing.T) {
 			t.Fatal("missing command body")
 		}
 		body := text[index+4 : len(text)-1]
-		body = strings.Replace(body, "1..90", "1..4", 1)
+		if hash == strings.Repeat("0", 64) {
+			body = strings.Replace(body, "1..90", "1..4", 1)
+		}
 		return backgroundCommand(filepath.Join(os.Getenv("WINDIR"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe"), "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", body)
 	}
 	run := func(cmd *exec.Cmd) {
@@ -70,7 +73,18 @@ func TestWindowsDownloadHashPairAndBackground(t *testing.T) {
 		}
 	}
 	run(script("pair", strings.Repeat("0", 64)))
+	if data, err := os.ReadFile(filepath.Join(temporary, "xr-v2.pair")); err != nil || !strings.Contains(string(data), token) {
+		t.Fatal("pairing file was not written by PowerShell")
+	}
 	run(script("download", strings.Repeat("0", 64)))
+	downloaded, downloadErr := os.ReadFile(filepath.Join(temporary, "xr-v2.exe"))
+	if downloadErr != nil {
+		t.Fatal("curl/rename did not produce the downloaded executable")
+	}
+	actualDigest := sha256.Sum256(downloaded)
+	if actualDigest != digest {
+		t.Fatal("downloaded bytes differ from the served executable")
+	}
 	run(script("verify", strings.Repeat("0", 64)))
 	if _, e = os.Stat(p.marker); !os.IsNotExist(e) {
 		t.Fatal("wrong SHA256 still executed installer")
@@ -81,12 +95,15 @@ func TestWindowsDownloadHashPairAndBackground(t *testing.T) {
 	// Start verification first, then download: slow connections must not race the installer.
 	os.Remove(filepath.Join(temporary, "xr-v2.exe"))
 	verifier := script("verify", hex.EncodeToString(digest[:]))
+	var verificationOutput bytes.Buffer
+	verifier.Stdout = &verificationOutput
+	verifier.Stderr = &verificationOutput
 	if e = verifier.Start(); e != nil {
 		t.Fatal(e)
 	}
 	run(script("download", hex.EncodeToString(digest[:])))
 	if e = verifier.Wait(); e != nil {
-		t.Fatal("verified installer did not complete")
+		t.Fatalf("verified installer did not complete: %s", verificationOutput.String())
 	}
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
@@ -97,7 +114,7 @@ func TestWindowsDownloadHashPairAndBackground(t *testing.T) {
 	}
 	cfg, e := readConfig(p.config)
 	if e != nil {
-		t.Fatal("downloaded executable did not install")
+		t.Fatalf("downloaded executable did not install: %s", verificationOutput.String())
 	}
 	if cfg.Topic != "xiao-"+hex.EncodeToString(pairing[:24]) || cfg.Key != hex.EncodeToString(pairing[24:]) {
 		t.Fatal("private pairing did not survive bootstrap")
@@ -107,6 +124,7 @@ func TestWindowsDownloadHashPairAndBackground(t *testing.T) {
 	deadline = time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
 		if _, e = os.Stat(p.root); os.IsNotExist(e) {
+			waitForUninstallHelpers(t)
 			return
 		}
 		time.Sleep(100 * time.Millisecond)

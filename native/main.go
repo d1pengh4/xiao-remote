@@ -96,7 +96,20 @@ func install(p paths, args []string, start bool) error {
 		_ = os.Remove(filepath.Join(p.runtime, name))
 	}
 	if start {
-		return startDetached(p.exe, "run")
+		_ = os.Remove(p.status)
+		if e = startDetached(p.exe, "run"); e != nil {
+			return e
+		}
+		deadline := time.Now().Add(8 * time.Second)
+		for time.Now().Before(deadline) {
+			data, _ := os.ReadFile(p.status)
+			var status Status
+			if json.Unmarshal(data, &status) == nil && (status.State == "Starting" || status.State == "Connected" || status.State == "Playback requested") {
+				return nil
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		return errors.New("background receiver did not become ready; check Chrome or Edge")
 	}
 	return nil
 }

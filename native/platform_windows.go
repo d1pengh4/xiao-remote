@@ -187,12 +187,13 @@ func scheduleSelfRemoval() {
 		return
 	}
 	directory := filepath.Dir(current)
-	if !strings.HasPrefix(filepath.Base(directory), "xiao-uninstall-") {
+	if !strings.HasPrefix(filepath.Base(directory), "xiao-uninstall-") || !samePath(filepath.Dir(directory), os.TempDir()) {
 		return
 	}
 	// A standard uninstaller helper waits for this executable to exit before removing it.
 	// LiteralPath and PowerShell string quoting handle spaces, apostrophes and shell metacharacters.
-	command := "Wait-Process -Id " + strconv.Itoa(os.Getpid()) + " -ErrorAction SilentlyContinue; Remove-Item -LiteralPath '" + strings.ReplaceAll(directory, "'", "''") + "' -Recurse -Force"
+	literal := "'" + strings.ReplaceAll(directory, "'", "''") + "'"
+	command := "Wait-Process -Id " + strconv.Itoa(os.Getpid()) + " -ErrorAction SilentlyContinue; 1..20|%{if(!(Test-Path -LiteralPath " + literal + ")){exit}; Remove-Item -LiteralPath " + literal + " -Recurse -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 200}"
 	helper := backgroundCommand(filepath.Join(os.Getenv("WINDIR"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe"), "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command)
 	if helper.Start() == nil {
 		_ = helper.Process.Release()

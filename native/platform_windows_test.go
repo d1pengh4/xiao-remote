@@ -129,4 +129,24 @@ func TestWindowsGUIInstallStartStopUninstall(t *testing.T) {
 	if data, e := os.ReadFile(outside); e != nil || string(data) != "keep" {
 		t.Fatal("uninstaller changed unrelated files")
 	}
+	waitForUninstallHelpers(t)
+}
+
+func waitForUninstallHelpers(t *testing.T) {
+	t.Helper()
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		entries, _ := os.ReadDir(os.TempDir())
+		found := false
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), "xiao-uninstall-") {
+				found = true
+			}
+		}
+		if !found {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatal("uninstaller temporary helper did not clean itself up")
 }
