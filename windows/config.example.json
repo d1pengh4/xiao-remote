@@ -1,0 +1,6 @@
+{
+  "relay_base": "https://ntfy.sh",
+  "topic": "xiao-REPLACE_WITH_RANDOM_TOPIC",
+  "signing_key": "REPLACE_WITH_64_HEX_CHARACTERS",
+  "video_id": "jfKfPfyJRdk"
+}
